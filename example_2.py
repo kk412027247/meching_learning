@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from zlib import crc32
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedShuffleSplit
+from pandas.plotting import scatter_matrix
 
 DOWNLOAD_ROOT = "https://raw.githubusercontent.com/ageron/handson-ml2/master/"
 HOUSING_PATH = os.path.join("datasets", "housing")
@@ -108,3 +109,29 @@ housing.plot(kind="scatter", x="longitude", y="latitude", alpha=0.4,
              )
 plt.legend()
 plt.show()
+
+corr_matrix = housing.corr()
+
+result = corr_matrix['median_house_value'].sort_values(ascending=False)
+print(result)
+
+attributes = ["median_house_value", "median_income", "total_rooms", "housing_median_age"]
+scatter_matrix(housing[attributes], figsize=(12, 8))
+plt.show()
+
+# scatter_matrix(housing, figsize=(12, 8))
+# plt.show()
+
+housing.plot(kind="scatter", x="median_income", y="median_house_value", alpha=0.1)
+plt.show()
+
+housing['rooms_per_household'] = housing['total_rooms']/housing['households']
+housing['bedroom_per_room'] = housing['total_bedrooms']/housing['total_rooms']
+housing['population_per_household'] = housing['population']/housing['households']
+
+corr_matrix = housing.corr()
+result = corr_matrix['median_house_value'].sort_values(ascending=False)
+print(result)
+
+housing = strat_train_set.drop("median_house_value", axis=1)
+housing_labels = strat_train_set['median_house_value'].copy()
