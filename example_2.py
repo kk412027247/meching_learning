@@ -8,6 +8,9 @@ from zlib import crc32
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedShuffleSplit
 from pandas.plotting import scatter_matrix
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OrdinalEncoder
+from sklearn.preprocessing import OneHotEncoder
 
 DOWNLOAD_ROOT = "https://raw.githubusercontent.com/ageron/handson-ml2/master/"
 HOUSING_PATH = os.path.join("datasets", "housing")
@@ -125,9 +128,9 @@ plt.show()
 housing.plot(kind="scatter", x="median_income", y="median_house_value", alpha=0.1)
 plt.show()
 
-housing['rooms_per_household'] = housing['total_rooms']/housing['households']
-housing['bedroom_per_room'] = housing['total_bedrooms']/housing['total_rooms']
-housing['population_per_household'] = housing['population']/housing['households']
+housing['rooms_per_household'] = housing['total_rooms'] / housing['households']
+housing['bedroom_per_room'] = housing['total_bedrooms'] / housing['total_rooms']
+housing['population_per_household'] = housing['population'] / housing['households']
 
 corr_matrix = housing.corr()
 result = corr_matrix['median_house_value'].sort_values(ascending=False)
@@ -135,3 +138,36 @@ print(result)
 
 housing = strat_train_set.drop("median_house_value", axis=1)
 housing_labels = strat_train_set['median_house_value'].copy()
+
+housing.dropna(subset=['total_bedrooms'])
+housing.drop('total_bedrooms', axis=1)
+median = housing['total_bedrooms'].median()
+housing['total_bedrooms'].fillna(median, inplace=True)
+
+imputer = SimpleImputer(strategy='median')
+housing_num = housing.drop('ocean_proximity', axis=1)
+imputer.fit(housing_num)
+
+print(imputer.statistics_)
+print(housing_num.median().values)
+
+X = imputer.transform(housing_num)
+
+housing_tr = pd.DataFrame(X, columns=housing_num.columns)
+
+housing_cat = housing[['ocean_proximity']]
+
+print(housing_cat.head(10))
+
+ordinal_encoder = OrdinalEncoder()
+
+housing_cat_encoder = ordinal_encoder.fit_transform(housing_cat)
+print(housing_cat_encoder)
+
+print(ordinal_encoder.categories_)
+
+cat_encoder = OneHotEncoder()
+housing_cat_1hot = cat_encoder.fit_transform(housing_cat)
+print(housing_cat_1hot)
+
+print(housing_cat_1hot.toarray())
