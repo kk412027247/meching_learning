@@ -20,6 +20,8 @@ from sklearn.metrics import mean_squared_error
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import GridSearchCV
+from scipy import stats
 
 DOWNLOAD_ROOT = "https://raw.githubusercontent.com/ageron/handson-ml2/master/"
 HOUSING_PATH = os.path.join("datasets", "housing")
@@ -257,8 +259,6 @@ lin_scores = cross_val_score(lin_reg, housing_prepared, housing_labels, scoring=
 lin_rmes_scores = np.sqrt(-lin_scores)
 display_scores(lin_rmes_scores)
 
-
-
 forest_reg = RandomForestRegressor()
 forest_reg.fit(housing_prepared, housing_labels)
 housing_predictions = forest_reg.predict(housing_prepared)
@@ -269,3 +269,55 @@ print('forest_rmse', forest_rmse)
 forest_scores = cross_val_score(forest_reg, housing_prepared, housing_labels, scoring="neg_mean_squared_error", cv=10)
 forest_rmes_scores = np.sqrt(-forest_scores)
 display_scores(forest_rmes_scores)
+
+param_grid = [
+    {'n_estimators': [3, 10, 30], 'max_features': [2, 4, 6, 8]},
+    {'bootstrap': [False], 'n_estimators': [3, 10], 'max_features': [2, 3, 4]}
+]
+
+forest_reg = RandomForestRegressor()
+
+grid_search = GridSearchCV(forest_reg, param_grid, cv=5,
+                           scoring='neg_mean_squared_error',
+                           return_train_score=True)
+grid_search.fit(housing_prepared, housing_labels)
+
+print(grid_search.best_params_)
+
+print(grid_search.best_estimator_)
+
+cvres = grid_search.cv_results_
+
+for mean_score, params in zip(cvres['mean_test_score'], cvres['params']):
+    print(np.sqrt(-mean_score), params)
+
+feature_importances = grid_search.best_estimator_.feature_importances_
+print(feature_importances)
+
+extra_attribs = ["rooms_per_hhold", "pop_per_hhold", "bedrooms_per_room"]
+cat_encoder = full_pipeline.named_transformers_['cat']
+cat_one_hot_attribs = list(cat_encoder.categories_[0])
+attributes = num_attribs + extra_attribs + cat_one_hot_attribs
+score_list = sorted(zip(feature_importances, attributes), reverse=True)
+print(score_list)
+
+final_model = grid_search.best_estimator_
+
+X_test = strat_test_set.drop("median_house_value", axis=1)
+y_test = strat_test_set['median_house_value'].copy()
+
+X_test_prepared = full_pipeline.transform(X_test)
+
+final_predictions = final_model.predict(X_test_prepared)
+
+final_mse = mean_squared_error(y_test, final_predictions)
+final_rmse = np.sqrt(final_mse)
+
+print(final_rmse)
+
+confidence = 0.95
+squared_errors = (final_predictions - y_test) ** 2
+interval = np.sqrt(stats.t.interval(confidence, len(squared_errors) - 1,
+                                    loc=squared_errors.mean(),
+                                    scale=stats.sem(squared_errors)))
+print(interval)
